@@ -11,36 +11,38 @@
    ================================================================ */
 const CONFIG = {
   assistantName: "Nova",                      // wake word + on-screen name (pick a simple English word)
-  businessName: "Sunrise Dental Clinic (DEMO)",      // client's business name
+  businessName: "Summit Air & Plumbing (DEMO)",      // client's business name
   tagline: "SAMPLE AI RECEPTIONIST — YOURS CAN LOOK LIKE THIS",  // small text under the title
   accentColor: "#38b6ff",                     // main glow color, e.g. "#38b6ff" blue, "#55e6a5" green, "#ff6b81" pink
-  ownerEmail: "redj58240@gmail.com",           // where visitor messages are sent
+  ownerEmail: "owner@business.com",           // where visitor messages are sent
   ownerPhone: "(555) 123-4567",                // shown when visitors ask to contact / book
 
   // Greeting spoken when the page opens
-  greeting: "Welcome to Sunrise Dental Clinic. Ask me about our hours, services, or prices.",
+  greeting: "Welcome to Summit Air and Plumbing. Ask me about our services, pricing, or emergency repairs.",
 
   // FAQ BRAIN — add one entry per common question.
   // keywords: words that trigger this answer (lowercase). answer: what the assistant says.
   faqs: [
+    { keywords: ["emergency", "burst", "flood", "no cooling", "no heat", "urgent"],
+      answer: "We offer 24/7 emergency service. Call us right now at (555) 123-4567 and a technician will be dispatched." },
     { keywords: ["hour", "open", "close", "schedule", "time"],
-      answer: "We are open Monday to Saturday, 9 AM to 6 PM. Closed on Sundays." },
-    { keywords: ["location", "where", "address", "find you", "map"],
-      answer: "We are located at 123 Main Street, Austin, Texas, next to the plaza." },
-    { keywords: ["price", "cost", "how much", "fee", "rate"],
-      answer: "Cleaning starts at 99 dollars, whitening at 250 dollars, and braces packages start at 3,500 dollars. Message us for a full price list." },
-    { keywords: ["service", "offer", "what do you do", "treatment"],
-      answer: "We offer cleaning, whitening, extractions, braces, dentures, and general checkups." },
-    { keywords: ["book", "appointment", "reserve", "walk in"],
-      answer: "Walk-ins are welcome, but booking is faster. Tap the CONTACT US button below or call us to reserve a slot." },
-    { keywords: ["promo", "discount", "student"],
-      answer: "We have a 10 percent student discount every weekday. Follow our Facebook page for monthly promos." }
+      answer: "Our office is open Monday to Friday, 8 AM to 6 PM, and we answer emergency calls 24/7." },
+    { keywords: ["location", "where", "address", "area", "serve"],
+      answer: "We serve the greater Austin, Texas area, including Round Rock, Cedar Park, and Pflugerville." },
+    { keywords: ["price", "cost", "how much", "fee", "rate", "estimate"],
+      answer: "Service calls start at 89 dollars, AC tune-ups at 129 dollars, and drain cleaning at 149 dollars. Estimates on new installations are free." },
+    { keywords: ["service", "offer", "what do you do", "repair", "install"],
+      answer: "We handle AC repair and installation, furnaces, water heaters, drain cleaning, and leak repairs — residential and light commercial." },
+    { keywords: ["book", "appointment", "reserve", "visit", "come out"],
+      answer: "We can usually schedule you within 24 hours. Tap the CONTACT US button below or call us to book a visit." },
+    { keywords: ["warranty", "guarantee", "licensed", "insured"],
+      answer: "We are fully licensed and insured, and all repairs come with a 1 year workmanship warranty." }
   ],
 
   // OPTIONAL: paste a free Gemini API key (aistudio.google.com) to let the
   // assistant answer questions outside the FAQ using AI. Leave "" to disable.
   geminiKey: "",
-  aiExtraContext: "A friendly dental clinic in Austin, Texas."
+  aiExtraContext: "A licensed HVAC and plumbing company serving Austin, Texas."
 };
 /* ================================================================
    END OF CONFIG — no need to edit anything below this line
