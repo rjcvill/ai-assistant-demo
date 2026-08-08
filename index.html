@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Assistant</title>
+<script>
+/* ================================================================
+   CLIENT CONFIG — THE ONLY PART YOU EDIT PER CLIENT
+   Change these values, save the file, deliver it. Done.
+   ================================================================ */
+const CONFIG = {
+  assistantName: "Nova",                      // wake word + on-screen name (pick a simple English word)
+  businessName: "Sunrise Dental Clinic (DEMO)",      // client's business name
+  tagline: "SAMPLE AI RECEPTIONIST — YOURS CAN LOOK LIKE THIS",  // small text under the title
+  accentColor: "#38b6ff",                     // main glow color, e.g. "#38b6ff" blue, "#55e6a5" green, "#ff6b81" pink
+  ownerEmail: "owner@business.com",           // where visitor messages are sent
+  ownerPhone: "0912 345 6789",                // shown when visitors ask to contact / book
+
+  // Greeting spoken when the page opens
+  greeting: "Welcome to Sunrise Dental Clinic. Ask me about our hours, services, or prices.",
+
+  // FAQ BRAIN — add one entry per common question.
+  // keywords: words that trigger this answer (lowercase). answer: what the assistant says.
+  faqs: [
+    { keywords: ["hour", "open", "close", "schedule", "time"],
+      answer: "We are open Monday to Saturday, 9 AM to 6 PM. Closed on Sundays." },
+    { keywords: ["location", "where", "address", "find you", "map"],
+      answer: "We are located at 123 Rizal Street, Quezon City, right beside the pharmacy." },
+    { keywords: ["price", "cost", "how much", "fee", "rate"],
+      answer: "Cleaning starts at 800 pesos, tooth extraction at 1,000 pesos, and braces packages start at 30,000 pesos. Message us for a full price list." },
+    { keywords: ["service", "offer", "what do you do", "treatment"],
+      answer: "We offer cleaning, whitening, extractions, braces, dentures, and general checkups." },
+    { keywords: ["book", "appointment", "reserve", "walk in"],
+      answer: "Walk-ins are welcome, but booking is faster. Tap the CONTACT US button below or call us to reserve a slot." },
+    { keywords: ["promo", "discount", "student"],
+      answer: "We have a 10 percent student discount every weekday. Follow our Facebook page for monthly promos." }
+  ],
+
+  // OPTIONAL: paste a free Gemini API key (aistudio.google.com) to let the
+  // assistant answer questions outside the FAQ using AI. Leave "" to disable.
+  geminiKey: "",
+  aiExtraContext: "A friendly dental clinic in Quezon City, Philippines."
+};
+/* ================================================================
+   END OF CONFIG — no need to edit anything below this line
+   ================================================================ */
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root { --accent: #38b6ff; }
+  body {
+    background: #030812; color: #7fd4ff;
+    font-family: "Consolas", "Courier New", monospace;
+    overflow: hidden; height: 100vh;
+  }
+  #reactor { position: absolute; top: 46%; left: 50%; transform: translate(-50%, -50%); }
+  .hud-title {
+    position: absolute; top: 20px; width: 100%; text-align: center;
+    letter-spacing: 6px; font-size: 20px; color: #eaf7ff;
+    text-shadow: 0 0 14px var(--accent); padding: 0 12px;
+  }
+  .hud-sub {
+    position: absolute; top: 50px; width: 100%; text-align: center;
+    font-size: 10px; letter-spacing: 3px; color: #4d8db6; padding: 0 12px;
+  }
+  #chatlog {
+    position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%);
+    width: min(560px, 92vw); max-height: 30vh; overflow-y: auto;
+    font-size: 13px; line-height: 1.55;
+  }
+  #chatlog div { margin-bottom: 8px; padding: 8px 12px; border-radius: 6px; }
+  .you  { color: #ffd479; background: rgba(255, 212, 121, 0.07); text-align: right; }
+  .bot  { color: #d9f2ff; background: rgba(56, 182, 255, 0.09); }
+  #status {
+    position: absolute; bottom: 118px; width: 100%; text-align: center;
+    font-size: 11px; letter-spacing: 4px; color: #55e6a5;
+  }
+  #inputbar {
+    position: absolute; bottom: 62px; left: 50%; transform: translateX(-50%);
+    width: min(560px, 92vw); display: flex; gap: 8px;
+  }
+  #inputbar input {
+    flex: 1; background: rgba(10,30,55,0.6); border: 1px solid rgba(120,190,255,0.35);
+    color: #eaf7ff; padding: 12px 14px; font-family: inherit; font-size: 13px;
+    border-radius: 6px; outline: none;
+  }
+  #inputbar button {
+    background: rgba(56,182,255,0.18); border: 1px solid var(--accent);
+    color: #eaf7ff; padding: 12px 16px; font-family: inherit; cursor: pointer;
+    border-radius: 6px; font-size: 13px;
+  }
+  #contactbtn {
+    position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+    background: rgba(85,230,165,0.12); border: 1px solid rgba(85,230,165,0.5);
+    color: #9af0c8; padding: 9px 22px; font-family: inherit; cursor: pointer;
+    border-radius: 6px; font-size: 12px; letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+<div class="hud-title" id="t-name"></div>
+<div class="hud-sub" id="t-tag"></div>
+<canvas id="reactor"></canvas>
+<div id="chatlog"></div>
+<div id="status">&#9679; STARTING</div>
+<div id="inputbar">
+  <input id="cmd-input" type="text" autocomplete="off">
+  <button id="cmd-send">ASK</button>
+  <button id="mic-btn" title="Voice">&#127908;</button>
+</div>
+<button id="contactbtn">CONTACT US</button>
+
+<script>
+/* ---------- apply config ---------- */
+document.documentElement.style.setProperty("--accent", CONFIG.accentColor);
+document.title = CONFIG.businessName + " — AI Assistant";
+document.getElementById("t-name").textContent = CONFIG.businessName.toUpperCase();
+document.getElementById("t-tag").textContent = CONFIG.tagline;
+document.getElementById("cmd-input").placeholder = "Ask " + CONFIG.assistantName + " anything...";
+document.getElementById("contactbtn").onclick = () => {
+  location.href = "mailto:" + CONFIG.ownerEmail + "?subject=" +
+    encodeURIComponent("Inquiry via " + CONFIG.assistantName + " assistant");
+};
+
+/* ---------- accent color as rgb for canvas ---------- */
+function hexToRgb(h) {
+  const m = h.replace("#", "");
+  return [parseInt(m.substr(0,2),16), parseInt(m.substr(2,2),16), parseInt(m.substr(4,2),16)];
+}
+const [AR, AG, AB] = hexToRgb(CONFIG.accentColor);
+
+/* ---------- reactor animation ---------- */
+const canvas = document.getElementById("reactor");
+const ctx = canvas.getContext("2d");
+let W, H, cx, cy;
+function resize() {
+  W = canvas.width = Math.min(window.innerWidth, window.innerHeight) * 0.5;
+  H = canvas.height = W; cx = W/2; cy = H/2;
+}
+resize();
+window.addEventListener("resize", resize);
+let t = 0, energy = 0, energyTarget = 0;
+function ring(r, w, a, rot, dash) {
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot);
+  ctx.strokeStyle = `rgba(${AR},${AG},${AB},${a})`; ctx.lineWidth = w;
+  if (dash) ctx.setLineDash(dash);
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); ctx.stroke(); ctx.restore();
+}
+function draw() {
+  t += 0.008 + energy * 0.02;
+  energy += (energyTarget - energy) * 0.05;
+  ctx.clearRect(0, 0, W, H);
+  const R = W/2, pulse = 1 + Math.sin(t*3)*0.02 + energy*0.05;
+  const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, R*0.36*pulse);
+  core.addColorStop(0, `rgba(235,250,255,${0.9+energy*0.1})`);
+  core.addColorStop(0.45, `rgba(${AR},${AG},${AB},0.5)`);
+  core.addColorStop(1, "rgba(10,30,60,0)");
+  ctx.fillStyle = core;
+  ctx.beginPath(); ctx.arc(cx, cy, R*0.36*pulse, 0, Math.PI*2); ctx.fill();
+  ring(R*0.5, 1.5, 0.7, t, [40,18]);
+  ring(R*0.64, 1, 0.4, -t*0.6, [8,10]);
+  ring(R*0.8, 2, 0.5, t*0.35, [90,30]);
+  ring(R*0.93, 1, 0.3, -t*0.2, [4,14]);
+  ctx.fillStyle = "rgba(230,248,255,0.9)";
+  ctx.font = `${Math.max(10, W*0.045)}px Consolas, monospace`;
+  ctx.textAlign = "center";
+  ctx.fillText(CONFIG.assistantName.toUpperCase(), cx, cy+5);
+  requestAnimationFrame(draw);
+}
+draw();
+
+/* ---------- chat log ---------- */
+const chatlog = document.getElementById("chatlog");
+const statusEl = document.getElementById("status");
+function log(who, text) {
+  const d = document.createElement("div");
+  d.className = who === "you" ? "you" : "bot";
+  d.textContent = text;
+  chatlog.appendChild(d);
+  while (chatlog.children.length > 8) chatlog.removeChild(chatlog.firstChild);
+  chatlog.scrollTop = chatlog.scrollHeight;
+}
+function setStatus(s) { statusEl.textContent = "\u25CF " + s; }
+
+/* ---------- speech out ---------- */
+function speak(text) {
+  energyTarget = 1;
+  log("bot", text);
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 1.0; u.pitch = 0.9;
+  const voices = speechSynthesis.getVoices();
+  const v = voices.find(v => v.lang.startsWith("en"));
+  if (v) u.voice = v;
+  u.onend = () => { energyTarget = 0; setStatus("READY"); };
+  speechSynthesis.speak(u);
+}
+
+/* ---------- FAQ brain ---------- */
+function faqMatch(q) {
+  const lower = q.toLowerCase();
+  let best = null, bestScore = 0;
+  for (const f of CONFIG.faqs) {
+    let score = 0;
+    for (const k of f.keywords) if (lower.includes(k)) score++;
+    if (score > bestScore) { bestScore = score; best = f; }
+  }
+  return bestScore > 0 ? best.answer : null;
+}
+
+/* ---------- optional Gemini fallback ---------- */
+async function askAI(q) {
+  try {
+    const sys = "You are " + CONFIG.assistantName + ", the friendly AI assistant for " + CONFIG.businessName +
+      ". " + CONFIG.aiExtraContext + " Known facts: " +
+      CONFIG.faqs.map(f => f.answer).join(" ") +
+      " Answer in one or two short spoken sentences. If you don't know, say so and suggest contacting " +
+      CONFIG.ownerPhone + " or the CONTACT US button. No markdown, no emoji.";
+    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + encodeURIComponent(CONFIG.geminiKey), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: sys }] },
+        contents: [{ role: "user", parts: [{ text: q }] }]
+      })
+    });
+    const data = await res.json();
+    if (data.candidates && data.candidates[0].content)
+      return data.candidates[0].content.parts.map(p => p.text || "").join("").trim();
+  } catch (_) {}
+  return null;
+}
+
+/* ---------- command handling ---------- */
+async function handle(q) {
+  log("you", q);
+  setStatus("THINKING");
+  energyTarget = 1;
+  const lower = q.toLowerCase();
+  if (/contact|talk to (a )?human|owner|message you|email/.test(lower)) {
+    speak("You can reach us at " + CONFIG.ownerPhone + ", or tap the CONTACT US button below to send a message.");
+    return;
+  }
+  const faq = faqMatch(q);
+  if (faq) { speak(faq); return; }
+  if (CONFIG.geminiKey) {
+    const ai = await askAI(q);
+    if (ai) { speak(ai); return; }
+  }
+  speak("I'm not sure about that one. You can reach us at " + CONFIG.ownerPhone + ", or tap CONTACT US below and we'll get back to you.");
+}
+
+/* ---------- text input ---------- */
+const input = document.getElementById("cmd-input");
+document.getElementById("cmd-send").onclick = () => { if (input.value.trim()) { handle(input.value.trim()); input.value = ""; } };
+input.addEventListener("keydown", e => { if (e.key === "Enter" && input.value.trim()) { handle(input.value.trim()); input.value = ""; } });
+
+/* ---------- voice input (tap mic, no wake word — simpler for visitors) ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const micBtn = document.getElementById("mic-btn");
+if (SR) {
+  const rec = new SR();
+  rec.continuous = false; rec.interimResults = false; rec.lang = "en-US";
+  rec.onresult = e => handle(e.results[0][0].transcript.trim());
+  rec.onend = () => setStatus("READY");
+  rec.onerror = () => setStatus("READY");
+  micBtn.onclick = () => { setStatus("LISTENING"); try { rec.start(); } catch (_) {} };
+} else {
+  micBtn.style.display = "none";
+}
+
+setStatus("READY");
+setTimeout(() => speak(CONFIG.greeting), 700);
+</script>
+</body>
+</html>
